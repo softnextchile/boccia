@@ -318,23 +318,35 @@ const COLORS = {
 let canvas, ctx;
 let courtW, courtH;
 
+let resizeObserver = null;
+
 function initCanvas() {
   canvas = document.getElementById('court');
   ctx = canvas.getContext('2d');
-  resizeCanvas();
+  // Start with default size until game screen is shown
+  courtW = 700;
+  courtH = 350;
+  canvas.width = courtW * window.devicePixelRatio;
+  canvas.height = courtH * window.devicePixelRatio;
+  canvas.style.width = courtW + 'px';
+  canvas.style.height = courtH + 'px';
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
   window.addEventListener('resize', resizeCanvas);
 }
 
 function resizeCanvas() {
   const container = document.getElementById('court-container');
+  if (!container) return;
   const rect = container.getBoundingClientRect();
-  canvas.width = rect.width * window.devicePixelRatio;
-  canvas.height = rect.height * window.devicePixelRatio;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  if (rect.width < 10 || rect.height < 10) return; // hidden
   courtW = rect.width;
   courtH = rect.height;
+  canvas.width = courtW * window.devicePixelRatio;
+  canvas.height = courtH * window.devicePixelRatio;
+  canvas.style.width = courtW + 'px';
+  canvas.style.height = courtH + 'px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
   if (state.balls.length > 0) render();
 }
 
@@ -379,10 +391,15 @@ function startGame(level) {
   state.ballsThrown = 0;
   state.balls = [];
   state.gameOver = false;
-  resetCourt();
   showScreen('game');
-  updateHUD();
-  render();
+  // Use double rAF to ensure layout is computed
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    resizeCanvas();
+    resetCourt();
+    spawnBalls();
+    updateHUD();
+    render();
+  }));
 }
 
 // === COURT SETUP ===
