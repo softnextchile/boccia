@@ -676,7 +676,7 @@ function launchBall() {
   const dy = ball.y - state.aimStart.y;
   const dist = Math.hypot(dx, dy);
   const maxDist = 150;
-  const power = Math.min(dist / maxDist, 1) * 12;
+  const power = Math.min(dist / maxDist, 1) * 18;
 
   if (power < 0.5) {
     state.aiming = false;
@@ -703,7 +703,7 @@ function launchBall() {
 // === PHYSICS ===
 function physicsLoop() {
   let anyMoving = false;
-  const friction = 0.96;
+  const friction = 0.985;
 
   state.balls.forEach(ball => {
     if (ball.moving) {
