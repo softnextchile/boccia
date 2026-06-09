@@ -104,14 +104,15 @@
       align-items: center;
       width: 100%;
       max-width: 700px;
-      padding: 12px 16px;
+      padding: 10px 16px;
       background: #2a2a4a;
       border-radius: 12px;
-      margin-bottom: 8px;
- }
-    .hud-item { text-align: center; }
-    .hud-item .label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; }
-    .hud-item .value { font-size: 1.3rem; font-weight: 700; }
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+    .hud-item { text-align: center; min-width: 50px; }
+    .hud-item .label { font-size: 0.65rem; color: #aaa; text-transform: uppercase; }
+    .hud-item .value { font-size: 1.2rem; font-weight: 700; }
     .hud-item .value.red { color: #E53935; }
     .hud-item .value.blue { color: #1E88E5; }
     .hud-item .value.gold { color: #FFD700; }
@@ -137,7 +138,7 @@
       justify-content: center;
       align-items: center;
       gap: 16px;
-      margin-top: 12px;
+      margin-top: 8px;
       width: 100%;
       max-width: 700px;
     }
@@ -189,6 +190,32 @@
       font-size: 0.85rem;
       color: #aaa;
     }
+
+    /* === WINNER MODAL === */
+    #winner-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    #winner-modal.show { display: flex; }
+    .winner-box {
+      background: #2a2a4a;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      width: 340px;
+    }
+    .winner-box h2 { font-size: 1.8rem; margin-bottom: 8px; }
+    .winner-box .winner-sub { color: #aaa; margin-bottom: 24px; }
+    .winner-box .scores { display: flex; justify-content: center; gap: 32px; margin-bottom: 24px; }
+    .winner-box .score-item .num { font-size: 2.5rem; font-weight: 700; }
+    .winner-box .score-item .num.red { color: #E53935; }
+    .winner-box .score-item .num.blue { color: #1E88E5; }
+    .winner-box .score-item .lbl { font-size: 0.8rem; color: #aaa; }
   </style>
 </head>
 <body>
@@ -281,6 +308,26 @@
     <div class="result-breakdown" id="result-breakdown"></div>
     <button class="menu-btn" onclick="showScreen('level')">Siguiente Nivel</button>
     <button class="menu-btn secondary" onclick="showScreen('menu')">Menú</button>
+  </div>
+</div>
+
+<!-- WINNER MODAL -->
+<div id="winner-modal">
+  <div class="winner-box">
+    <h2 id="winner-title">¡Ganaste!</h2>
+    <p class="winner-sub" id="winner-sub">Partido completado</p>
+    <div class="scores">
+      <div class="score-item">
+        <div class="num red" id="modal-red-score">0</div>
+        <div class="lbl">Tu Equipo</div>
+      </div>
+      <div class="score-item">
+        <div class="num blue" id="modal-blue-score">0</div>
+        <div class="lbl">Equipo IA</div>
+      </div>
+    </div>
+    <button class="menu-btn" id="btn-replay" onclick="replayMatch()">Jugar de Nuevo</button>
+    <button class="menu-btn secondary" style="margin-top:8px;width:200px;" onclick="closeWinnerModal()">Menú</button>
   </div>
 </div>
 
@@ -423,8 +470,8 @@ function startGame(level) {
 
 // === COURT SETUP ===
 function resetCourt() {
-  // Place jack near center-right
-  state.jack = { x: courtW * 0.7, y: courtH * 0.5 };
+  // Place jack at exact center
+  state.jack = { x: courtW * 0.5, y: courtH * 0.5 };
   state.balls = [];
   state.ballsThrown = 0;
   state.redThrown = 0;
@@ -433,21 +480,21 @@ function resetCourt() {
 }
 
 function spawnBalls() {
-  // Red balls (player) - left side
+  // Red balls (player) - left side, on throw line (x = 10% of court)
   for (let i = 0; i < state.mode; i++) {
     state.balls.push({
-      x: courtW * 0.1 + (i * 20),
-      y: courtH * 0.3 + (i * courtH * 0.1),
+      x: courtW * 0.1,
+      y: courtH * 0.2 + (i * courtH * 0.6 / (state.mode - 1 || 1)),
       color: 'red',
       moving: false,
       vx: 0, vy: 0
     });
   }
-  // Blue balls (IA) - right side
+  // Blue balls (IA) - right side, on throw line (x = 90% of court)
   for (let i = 0; i < state.mode; i++) {
     state.balls.push({
-      x: courtW * 0.9 - (i * 20),
-      y: courtH * 0.3 + (i * courtH * 0.1),
+      x: courtW * 0.9,
+      y: courtH * 0.2 + (i * courtH * 0.6 / (state.mode - 1 || 1)),
       color: 'blue',
       moving: false,
       vx: 0, vy: 0
@@ -902,6 +949,7 @@ function endGame() {
   state.gameOver = true;
 
   const playerWon = state.redScore > state.blueScore;
+  const tied = state.redScore === state.blueScore;
   const bonus = playerWon ? 50 : 0;
   const endBonus = (state.end === state.maxEnds && playerWon) ? 20 : 0;
   const endScore = state.redScore + bonus + endBonus;
@@ -917,18 +965,30 @@ function endGame() {
     }
   }
 
-  // Show result
-  document.getElementById('result-title').textContent = playerWon ? '¡Ganaste el Partido!' : 'La IA ganó';
-  document.getElementById('result-score').textContent = endScore;
+  // Show winner modal
+  if (tied) {
+    document.getElementById('winner-title').textContent = '¡Empate!';
+    document.getElementById('winner-sub').textContent = 'Ambos equipos empataron';
+  } else {
+    document.getElementById('winner-title').textContent = playerWon ? '¡Ganaste el Partido!' : 'La IA ganó';
+    document.getElementById('winner-sub').textContent = playerWon ? '¡Felicitaciones!' : 'Mejor suerte la próxima vez';
+  }
+  document.getElementById('modal-red-score').textContent = state.redScore;
+  document.getElementById('modal-blue-score').textContent = state.blueScore;
+  document.getElementById('btn-replay').textContent = 'Jugar de Nuevo';
 
-  const breakdown = document.getElementById('result-breakdown');
-  breakdown.innerHTML = `
-    <div><span>Puntos del juego</span><span>${state.redScore}</span></div>
-    <div><span>Bonus partido ganado</span><span class="bonus">+${bonus}</span></div>
-    <div><span>Bonus end perfecto</span><span class="bonus">+${endBonus}</span></div>
-  `;
+  const modal = document.getElementById('winner-modal');
+  modal.classList.add('show');
+}
 
-  showScreen('result');
+function closeWinnerModal() {
+  document.getElementById('winner-modal').classList.remove('show');
+  showScreen('menu');
+}
+
+function replayMatch() {
+  document.getElementById('winner-modal').classList.remove('show');
+  startGame(state.level);
 }
 
 // === INIT ===
