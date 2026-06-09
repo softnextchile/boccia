@@ -331,16 +331,28 @@ function initCanvas() {
   canvas.style.width = courtW + 'px';
   canvas.style.height = courtH + 'px';
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', () => scheduleResize());
 }
 
-function resizeCanvas() {
+let resizePending = false;
+function scheduleResize() {
+  if (resizePending) return;
+  resizePending = true;
+  requestAnimationFrame(() => {
+    resizePending = false;
+    doResize();
+  });
+}
+
+function doResize() {
   const container = document.getElementById('court-container');
   if (!container) return;
+  // Use the CSS-computed style dimensions as fallback
+  const styleW = parseFloat(canvas.style.width) || 700;
+  const styleH = parseFloat(canvas.style.height) || 350;
   const rect = container.getBoundingClientRect();
-  if (rect.width < 10 || rect.height < 10) return; // hidden
-  courtW = rect.width;
-  courtH = rect.height;
+  courtW = rect.width > 0 ? rect.width : styleW;
+  courtH = rect.height > 0 ? rect.height : styleH;
   canvas.width = courtW * window.devicePixelRatio;
   canvas.height = courtH * window.devicePixelRatio;
   canvas.style.width = courtW + 'px';
@@ -348,6 +360,11 @@ function resizeCanvas() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
   if (state.balls.length > 0) render();
+}
+
+function resizeCanvas() {
+  // Called manually after screen switch - schedule it
+  scheduleResize();
 }
 
 // === SCREEN MANAGEMENT ===
