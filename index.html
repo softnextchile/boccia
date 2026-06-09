@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boccia Adaptada</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #1A1A2E;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* === MENU === */
+    #menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+      width: 100%;
+    }
+    #menu h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #4CAF50;
+    }
+    #menu .subtitle {
+      font-size: 1rem;
+      color: #aaa;
+      margin-bottom: 48px;
+    }
+    .menu-btn {
+      background: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 16px 48px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 8px;
+      width: 280px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .menu-btn:hover { background: #388E3C; transform: scale(1.03); }
+    .menu-btn.secondary { background: #333; }
+    .menu-btn.secondary:hover { background: #444; }
+
+    /* === SCREENS === */
+    .screen { display: none; flex-direction: column; align-items: center; padding: 24px; width: 100%; }
+    .screen.active { display: flex; }
+
+    /* === MODE SELECT === */
+    #mode-screen h2 { font-size: 1.8rem; margin-bottom: 32px; }
+    .mode-cards { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+    .mode-card {
+      background: #2a2a4a;
+      border-radius: 16px;
+      padding: 32px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+      width: 200px;
+    }
+    .mode-card:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .mode-card .players { font-size: 3rem; font-weight: 700; color: #4CAF50; }
+    .mode-card .label { font-size: 0.9rem; color: #aaa; margin-top: 8px; }
+
+    /* === LEVEL SELECT === */
+    #level-screen h2 { font-size: 1.8rem; margin-bottom: 32px; }
+    .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .level-btn {
+      background: #2a2a4a;
+      border: 2px solid #333;
+      color: #fff;
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .level-btn:hover { border-color: #4CAF50; transform: scale(1.1); }
+    .level-btn.locked { opacity: 0.4; cursor: not-allowed; }
+    .level-btn.locked:hover { transform: none; border-color: #333; }
+
+    /* === GAME SCREEN === */
+    #game-screen { padding: 8px; }
+    .game-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 700px;
+      padding: 12px 16px;
+      background: #2a2a4a;
+      border-radius: 12px;
+      margin-bottom: 8px;
+ }
+    .hud-item { text-align: center; }
+    .hud-item .label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; }
+    .hud-item .value { font-size: 1.3rem; font-weight: 700; }
+    .hud-item .value.red { color: #E53935; }
+    .hud-item .value.blue { color: #1E88E5; }
+    .hud-item .value.gold { color: #FFD700; }
+
+    #court-container {
+      position: relative;
+      width: 100%;
+      max-width: 700px;
+      aspect-ratio: 2/1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    #court {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .game-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 700px;
+    }
+    .turn-indicator {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .turn-indicator.red { background: #E53935; }
+    .turn-indicator.blue { background: #1E88E5; }
+
+    /* === RESULT SCREEN === */
+    #result-screen { justify-content: center; min-height: 100vh; }
+    #result-screen h2 { font-size: 2rem; margin-bottom: 24px; }
+    .result-box {
+      background: #2a2a4a;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      width: 320px;
+    }
+    .result-score { font-size: 4rem; font-weight: 700; color: #FFD700; }
+    .result-breakdown { margin: 24px 0; text-align: left; }
+    .result-breakdown div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
+    .result-breakdown .bonus { color: #FFD700; }
+
+    /* === FLOATING POINTS === */
+    .float-point {
+      position: absolute;
+      font-weight: 700;
+      font-size: 1.2rem;
+      pointer-events: none;
+      animation: floatUp 1s ease-out forwards;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-40px); }
+    }
+
+    /* === INSTRUCTIONS === */
+    .instructions {
+      background: #2a2a4a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+      max-width: 320px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+  <h1>Boccia</h1>
+  <p class="subtitle">Deporte adaptado de estrategia y precisión</p>
+  <button class="menu-btn" onclick="showScreen('mode')">Jugar</button>
+  <button class="menu-btn secondary" onclick="showScreen('info')">Cómo Jugar</button>
+  <div style="margin-top:32px;">
+    <p style="color:#555;font-size:0.8rem;">Puntaje Total: <span id="total-score-display">0</span></p>
+  </div>
+</div>
+
+<!-- MODE SELECT -->
+<div id="mode-screen" class="screen">
+  <h2>Selecciona el Modo</h2>
+  <div class="mode-cards">
+    <div class="mode-card" onclick="selectMode(2)">
+      <div class="players">2v2</div>
+      <div class="label">Partido rápido</div>
+    </div>
+    <div class="mode-card" onclick="selectMode(5)">
+      <div class="players">5v5</div>
+      <div class="label">Partido completo</div>
+    </div>
+  </div>
+  <button class="menu-btn secondary" style="margin-top:32px;width:200px;" onclick="showScreen('menu')">Volver</button>
+</div>
+
+<!-- LEVEL SELECT -->
+<div id="level-screen" class="screen">
+  <h2>Selecciona el Escenario</h2>
+  <div class="level-grid" id="level-grid"></div>
+  <button class="menu-btn secondary" style="margin-top:32px;width:200px;" onclick="showScreen('mode')">Volver</button>
+</div>
+
+<!-- INFO -->
+<div id="info-screen" class="screen">
+  <h2>Cómo Jugar</h2>
+  <div class="instructions">
+    <p><strong>1.</strong> Arrastra desde tu pelota para apuntar</p>
+    <p><strong>2.</strong> La distancia del arrastre = potencia</p>
+    <p><strong>3.</strong> Suelta para lanzar</p>
+    <p><strong>4.</strong> Acumula puntos por cercanía al jack</p>
+    <p><strong>5.</strong> Gana el partido para obtener bonus</p>
+  </div>
+  <button class="menu-btn secondary" style="margin-top:24px;width:200px;" onclick="showScreen('menu')">Volver</button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <div class="game-hud">
+    <div class="hud-item">
+      <div class="label">Nivel</div>
+      <div class="value" id="hud-level">1</div>
+    </div>
+    <div class="hud-item">
+      <div class="label">Tu Equipo</div>
+      <div class="value red" id="hud-red">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="label">Equipo IA</div>
+      <div class="value blue" id="hud-blue">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="label">End</div>
+      <div class="value" id="hud-end">1/4</div>
+    </div>
+    <div class="hud-item">
+      <div class="label">Total</div>
+      <div class="value gold" id="hud-total">0</div>
+    </div>
+  </div>
+  <div id="court-container">
+    <canvas id="court"></canvas>
+  </div>
+  <div class="game-controls">
+    <div class="turn-indicator red" id="turn-indicator">Tu turno</div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen" class="screen">
+  <h2 id="result-title">¡Partido Terminado!</h2>
+  <div class="result-box">
+    <div class="result-score" id="result-score">0</div>
+    <div style="color:#aaa;font-size:0.8rem;">PUNTOS DEL PARTIDO</div>
+    <div class="result-breakdown" id="result-breakdown"></div>
+    <button class="menu-btn" onclick="showScreen('level')">Siguiente Nivel</button>
+    <button class="menu-btn secondary" onclick="showScreen('menu')">Menú</button>
+  </div>
+</div>
+
+<script>
+// === GAME STATE ===
+const state = {
+  mode: 2,       // 2v2 or 5v5
+  level: 1,
+  totalScore: parseInt(localStorage.getItem('boccia_total') || '0'),
+  redScore: 0,
+  blueScore: 0,
+  end: 1,
+  maxEnds: 4,
+  turn: 'red',   // 'red' = player, 'blue' = IA
+  ballsThrown: 0,
+  maxBalls: 6,
+  balls: [], // {x, y, color, moving, vx, vy}
+  jack: {x: 0, y: 0},
+  aiming: false,
+  aimStart: null,
+  unlockedLevels: parseInt(localStorage.getItem('boccia_levels') || '1'),
+ gameOver: false
+};
+
+// === CONSTANTS ===
+const COLORS = {
+  red: '#E53935',
+  blue: '#1E88E5',
+  jack: '#FAFAFA',
+  court: '#2E7D32',
+  courtLines: '#1B5E20'
+};
+
+// === DOM REFS ===
+let canvas, ctx;
+let courtW, courtH;
+
+function initCanvas() {
+  canvas = document.getElementById('court');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+}
+
+function resizeCanvas() {
+  const container = document.getElementById('court-container');
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  courtW = rect.width;
+  courtH = rect.height;
+  if (state.balls.length > 0) render();
+}
+
+// === SCREEN MANAGEMENT ===
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+  if (name === 'menu') updateTotalDisplay();
+  if (name === 'level') renderLevelGrid();
+}
+
+function updateTotalDisplay() {
+  document.getElementById('total-score-display').textContent = state.totalScore;
+}
+
+// === MODE& LEVEL ===
+function selectMode(m) {
+  state.mode = m;
+  showScreen('level');
+}
+
+function renderLevelGrid() {
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'level-btn' + (i > state.unlockedLevels ? ' locked' : '');
+    btn.textContent = i;
+    if (i <= state.unlockedLevels) {
+      btn.onclick = () => startGame(i);
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function startGame(level) {
+  state.level = level;
+  state.redScore = 0;
+  state.blueScore = 0;
+  state.end = 1;
+  state.turn = 'red';
+  state.ballsThrown = 0;
+  state.balls = [];
+  state.gameOver = false;
+  resetCourt();
+  showScreen('game');
+  updateHUD();
+  render();
+}
+
+// === COURT SETUP ===
+function resetCourt() {
+  // Place jack near center-right
+  state.jack = { x: courtW * 0.7, y: courtH * 0.5 };
+  state.balls = [];
+  state.ballsThrown = 0;
+  state.turn = 'red';
+}
+
+function spawnBalls() {
+  // Red balls (player) - left side
+  for (let i = 0; i < state.mode; i++) {
+    state.balls.push({
+      x: courtW * 0.1 + (i * 20),
+      y: courtH * 0.3 + (i * courtH * 0.1),
+      color: 'red',
+      moving: false,
+      vx: 0, vy: 0
+    });
+  }
+  // Blue balls (IA) - right side
+  for (let i = 0; i < state.mode; i++) {
+    state.balls.push({
+      x: courtW * 0.9 - (i * 20),
+      y: courtH * 0.3 + (i * courtH * 0.1),
+      color: 'blue',
+      moving: false,
+      vx: 0, vy: 0
+    });
+  }
+}
+
+// === RENDERING ===
+function render() {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, courtW, courtH);
+
+  // Court background
+  ctx.fillStyle = COLORS.court;
+  ctx.fillRect(0, 0, courtW, courtH);
+
+  // Court lines
+  ctx.strokeStyle = COLORS.courtLines;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(courtW * 0.1, 0);
+  ctx.lineTo(courtW * 0.1, courtH);
+  ctx.moveTo(courtW * 0.9, 0);
+  ctx.lineTo(courtW * 0.9, courtH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Cross area line
+  ctx.beginPath();
+  ctx.moveTo(courtW * 0.5, 0);
+  ctx.lineTo(courtW * 0.5, courtH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.stroke();
+
+  // Jack
+  ctx.beginPath();
+  ctx.arc(state.jack.x, state.jack.y, 10, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.jack;
+  ctx.fill();
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Balls
+  state.balls.forEach(ball => {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS[ball.color];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Highlight player balls
+    if (ball.color === 'red' && state.turn === 'red' && !state.gameOver) {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 18, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+
+  // Aim line
+  if (state.aiming && state.aimStart) {
+    const ball = getCurrentBall();
+    if (ball) {
+      ctx.beginPath();
+      ctx.moveTo(ball.x, ball.y);
+      ctx.lineTo(state.aimStart.x, state.aimStart.y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Power indicator
+      const dist = Math.hypot(state.aimStart.x - ball.x, state.aimStart.y - ball.y);
+      const maxDist = 150;
+      const power = Math.min(dist / maxDist, 1);
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 24, 0, Math.PI * 2 * power);
+      ctx.strokeStyle = `rgba(255, ${Math.floor(255 * (1 - power))}, 0, 0.8)`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+  }
+}
+
+function getCurrentBall() {
+  // Find next unthrown ball of current turn's color
+  const color = state.turn;
+  let count = 0;
+  for (let ball of state.balls) {
+    if (ball.color === color) {
+      if (count === state.ballsThrown % state.maxBalls) {
+        return ball;
+      }
+      count++;
+    }
+  }
+  return null;
+}
+
+// === INPUT HANDLING ===
+function setupInput() {
+  canvas.addEventListener('mousedown', onPointerDown);
+  canvas.addEventListener('mousemove', onPointerMove);
+  canvas.addEventListener('mouseup', onPointerUp);
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+  canvas.addEventListener('touchend', onTouchEnd);
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function onPointerDown(e) {
+  if (state.turn !== 'red' || state.gameOver) return;
+  const pos = getPos(e);
+  const ball = getCurrentBall();
+  if (!ball) return;
+
+  const dist = Math.hypot(pos.x - ball.x, pos.y - ball.y);
+  if (dist < 30) {
+    state.aiming = true;
+    state.aimStart = pos;
+  }
+}
+
+function onPointerMove(e) {
+  if (!state.aiming) return;
+  state.aimStart = getPos(e);
+  render();
+}
+
+function onPointerUp(e) {
+  if (!state.aiming) return;
+  launchBall();
+}
+
+function onTouchStart(e) {
+  e.preventDefault();
+  if (state.turn !== 'red' || state.gameOver) return;
+  const touch = e.touches[0];
+  const pos = { x: touch.clientX - canvas.getBoundingClientRect().left, y: touch.clientY - canvas.getBoundingClientRect().top };
+  const ball = getCurrentBall();
+  if (!ball) return;
+  const dist = Math.hypot(pos.x - ball.x, pos.y - ball.y);
+  if (dist < 40) {
+    state.aiming = true;
+    state.aimStart = pos;
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!state.aiming) return;
+  const touch = e.touches[0];
+  state.aimStart = { x: touch.clientX - canvas.getBoundingClientRect().left, y: touch.clientY - canvas.getBoundingClientRect().top };
+  render();
+}
+
+function onTouchEnd(e) {
+  if (!state.aiming) return;
+  launchBall();
+}
+
+// === LAUNCH ===
+function launchBall() {
+  const ball = getCurrentBall();
+  if (!ball) return;
+
+  const dx = ball.x - state.aimStart.x;
+  const dy = ball.y - state.aimStart.y;
+  const dist = Math.hypot(dx, dy);
+  const maxDist = 150;
+  const power = Math.min(dist / maxDist, 1) * 12;
+
+  if (power < 0.5) {
+    state.aiming = false;
+    state.aimStart = null;
+    render();
+    return;
+  }
+
+  const angle = Math.atan2(dy, dx);
+  ball.vx = Math.cos(angle) * power;
+  ball.vy = Math.sin(angle) * power;
+  ball.moving = true;
+
+  state.aiming = false;
+  state.aimStart = null;
+  state.ballsThrown++;
+
+  // Start physics loop
+  requestAnimationFrame(physicsLoop);
+
+  // After a delay, IA plays
+  setTimeout(() => {
+    if (!state.gameOver) {
+      state.turn = 'blue';
+      updateHUD();
+      render();
+      setTimeout(iaTurn, 800 + Math.random() * 600);
+    }
+  }, 600);
+}
+
+// === PHYSICS ===
+function physicsLoop() {
+  let anyMoving = false;
+  const friction = 0.96;
+
+  state.balls.forEach(ball => {
+    if (ball.moving) {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.vx *= friction;
+      ball.vy *= friction;
+
+      // Bounds
+      if (ball.x < 14) { ball.x = 14; ball.vx *= -0.6; }
+      if (ball.x > courtW - 14) { ball.x = courtW - 14; ball.vx *= -0.6; }
+      if (ball.y < 14) { ball.y = 14; ball.vy *= -0.6; }
+      if (ball.y > courtH - 14) { ball.y = courtH - 14; ball.vy *= -0.6; }
+
+      // Ball-ball collision
+      state.balls.forEach(other => {
+        if (other === ball) return;
+        const dx = other.x - ball.x;
+        const dy = other.y - ball.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 28) {
+          const nx = dx / d;
+          const ny = dy / d;
+          const overlap = 28 - d;
+          ball.x -= nx * overlap * 0.5;
+          ball.y -= ny * overlap * 0.5;
+          other.x += nx * overlap * 0.5;
+          other.y += ny * overlap * 0.5;
+          const relVx = ball.vx - other.vx;
+          const relVy = ball.vy - other.vy;
+          const dot = relVx * nx + relVy * ny;
+          ball.vx -= dot * nx * 0.8;
+          ball.vy -= dot * ny * 0.8;
+          other.vx += dot * nx * 0.8;
+          other.vy += dot * ny * 0.8;
+        }
+      });
+
+      if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.moving = false;
+      } else {
+        anyMoving = true;
+      }
+    }
+  });
+
+  render();
+
+  if (anyMoving) {
+    requestAnimationFrame(physicsLoop);
+  } else {
+    checkEnd();
+  }
+}
+
+// === IA ===
+function iaTurn() {
+  if (state.gameOver) return;
+
+  // Find next blue ball
+  let blueBalls = state.balls.filter(b => b.color === 'blue');
+  let thrown = Math.floor(state.ballsThrown / 2) - (state.balls.filter(b => b.color === 'blue' && !b.moving).length - (state.balls.filter(b => b.color === 'blue').length - blueBalls.length));
+  // Simpler: count blue balls thrown
+  let blueThrown = state.balls.filter(b => b.color === 'blue' && !b.moving).length;
+  let ball = blueBalls[blueThrown];
+
+  if (!ball) {
+    nextTurn();
+    return;
+  }
+
+  // Simple IA: aim toward jack with some randomness based on level
+  const difficulty = Math.min(state.level / 10, 0.9);
+  const error = (1 - difficulty) * 80;
+
+  const dx = state.jack.x - ball.x + (Math.random() - 0.5) * error;
+  const dy = state.jack.y - ball.y + (Math.random() - 0.5) * error;
+  const dist = Math.hypot(dx, dy);
+  const power = Math.min(dist / 20, 10) * difficulty +2;
+
+  const angle = Math.atan2(dy, dx);
+  ball.vx = Math.cos(angle) * power;
+  ball.vy = Math.sin(angle) * power;
+  ball.moving = true;
+
+  requestAnimationFrame(physicsLoop);
+
+  setTimeout(() => {
+    if (!state.gameOver) {
+      state.turn = 'red';
+      updateHUD();
+      render();
+    }
+  }, 800 + Math.random() * 600);
+}
+
+// === TURN / END MANAGEMENT ===
+function nextTurn() {
+  // Switch turns after both have thrown
+  if (state.turn === 'red') {
+    state.turn = 'blue';
+  } else {
+    state.turn = 'red';
+  }
+  updateHUD();
+  render();
+}
+
+function checkEnd() {
+  // Count total balls thrown this end
+  const thrown = state.balls.filter(b => !b.moving).length;
+
+  if (thrown >= state.maxBalls * 2) {
+    // End is over - calculate score
+    calculateEndScore();
+  } else {
+    // Continue - switch back if needed
+    if (state.turn === 'blue') {
+      state.turn = 'red';
+      updateHUD();
+    }
+  }
+}
+
+function calculateEndScore() {
+  // Find closest ball to jack
+  let closestRed = null, closestBlue = null;
+  let minRed = Infinity, minBlue = Infinity;
+
+  state.balls.forEach(ball => {
+    const d = Math.hypot(ball.x - state.jack.x, ball.y - state.jack.y);
+    if (ball.color === 'red' && d < minRed) { minRed = d; closestRed = ball; }
+    if (ball.color === 'blue' && d < minBlue) { minBlue = d; closestBlue = ball; }
+  });
+
+  let redPoints = 0, bluePoints = 0;
+
+  if (closestRed && (!closestBlue || minRed < minBlue)) {
+    // Red scores
+    redPoints = 1;
+    state.balls.forEach(ball => {
+      if (ball.color === 'red') {
+        const d = Math.hypot(ball.x - state.jack.x, ball.y - state.jack.y);
+        if (closestBlue && d < Math.hypot(closestBlue.x - state.jack.x, closestBlue.y - state.jack.y)) {
+          redPoints++;
+        }
+      }
+    });
+ state.redScore += redPoints;
+  } else if (closestBlue) {
+    // Blue scores
+    bluePoints = 1;
+    state.balls.forEach(ball => {
+      if (ball.color === 'blue') {
+        const d = Math.hypot(ball.x - state.jack.x, ball.y - state.jack.y);
+        if (closestRed && d < Math.hypot(closestRed.x - state.jack.x, closestRed.y - state.jack.y)) {
+          bluePoints++;
+        }
+      }
+    });
+    state.blueScore += bluePoints;
+  }
+
+  showFloatPoints(redPoints, bluePoints);
+  updateHUD();
+
+  setTimeout(() => {
+    if (state.end < state.maxEnds) {
+      state.end++;
+      resetCourt();
+      updateHUD();
+      render();
+    } else {
+      endGame();
+    }
+  }, 1500);
+}
+
+function showFloatPoints(redP, blueP) {
+  const container = document.getElementById('court-container');
+  if (redP > 0) {
+    const el = document.createElement('div');
+    el.className = 'float-point';
+    el.style.color = COLORS.red;
+    el.style.left = '20%';
+    el.style.top = '50%';
+    el.textContent = '+' + redP;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+  if (blueP > 0) {
+    const el = document.createElement('div');
+    el.className = 'float-point';
+    el.style.color = COLORS.blue;
+    el.style.left = '70%';
+    el.style.top = '50%';
+    el.textContent = '+' + blueP;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+}
+
+function updateHUD() {
+  document.getElementById('hud-level').textContent = state.level;
+  document.getElementById('hud-red').textContent = state.redScore;
+  document.getElementById('hud-blue').textContent = state.blueScore;
+  document.getElementById('hud-end').textContent = state.end + '/' + state.maxEnds;
+  document.getElementById('hud-total').textContent = state.totalScore;
+
+  const indicator = document.getElementById('turn-indicator');
+  if (state.turn === 'red') {
+    indicator.textContent = 'Tu turno';
+    indicator.className = 'turn-indicator red';
+  } else {
+    indicator.textContent = 'Turno IA';
+    indicator.className = 'turn-indicator blue';
+  }
+}
+
+// === END GAME ===
+function endGame() {
+  state.gameOver = true;
+
+  const playerWon = state.redScore > state.blueScore;
+  const bonus = playerWon ? 50 : 0;
+  const endBonus = (state.end === state.maxEnds && playerWon) ? 20 : 0;
+  const endScore = state.redScore + bonus + endBonus;
+
+  state.totalScore += endScore;
+  localStorage.setItem('boccia_total', state.totalScore);
+
+  if (playerWon && state.level < 10) {
+    const nextLevel = state.level + 1;
+    if (nextLevel > state.unlockedLevels) {
+      state.unlockedLevels = nextLevel;
+      localStorage.setItem('boccia_levels', state.unlockedLevels);
+    }
+  }
+
+  // Show result
+  document.getElementById('result-title').textContent = playerWon ? '¡Ganaste el Partido!' : 'La IA ganó';
+  document.getElementById('result-score').textContent = endScore;
+
+  const breakdown = document.getElementById('result-breakdown');
+  breakdown.innerHTML = `
+    <div><span>Puntos del juego</span><span>${state.redScore}</span></div>
+    <div><span>Bonus partido ganado</span><span class="bonus">+${bonus}</span></div>
+    <div><span>Bonus end perfecto</span><span class="bonus">+${endBonus}</span></div>
+  `;
+
+  showScreen('result');
+}
+
+// === INIT ===
+function init() {
+  initCanvas();
+  setupInput();
+  updateTotalDisplay();
+  render();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
