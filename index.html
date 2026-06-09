@@ -296,13 +296,15 @@ const state = {
   maxEnds: 4,
   turn: 'red',   // 'red' = player, 'blue' = IA
   ballsThrown: 0,
+  redThrown: 0,
+  blueThrown: 0,
   maxBalls: 6,
   balls: [], // {x, y, color, moving, vx, vy}
   jack: {x: 0, y: 0},
   aiming: false,
   aimStart: null,
   unlockedLevels: parseInt(localStorage.getItem('boccia_levels') || '1'),
- gameOver: false
+  gameOver: false
 };
 
 // === CONSTANTS ===
@@ -425,6 +427,8 @@ function resetCourt() {
   state.jack = { x: courtW * 0.7, y: courtH * 0.5 };
   state.balls = [];
   state.ballsThrown = 0;
+  state.redThrown = 0;
+  state.blueThrown = 0;
   state.turn = 'red';
 }
 
@@ -535,14 +539,12 @@ function render() {
 }
 
 function getCurrentBall() {
-  // Find next unthrown ball of current turn's color
   const color = state.turn;
+  const thrown = color === 'red' ? state.redThrown : state.blueThrown;
   let count = 0;
   for (let ball of state.balls) {
     if (ball.color === color) {
-      if (count === state.ballsThrown % state.maxBalls) {
-        return ball;
-      }
+      if (count === thrown) return ball;
       count++;
     }
   }
@@ -644,19 +646,11 @@ function launchBall() {
   state.aiming = false;
   state.aimStart = null;
   state.ballsThrown++;
+  if (state.turn === 'red') state.redThrown++;
+  else state.blueThrown++;
 
   // Start physics loop
   requestAnimationFrame(physicsLoop);
-
-  // After a delay, IA plays
-  setTimeout(() => {
-    if (!state.gameOver) {
-      state.turn = 'blue';
-      updateHUD();
-      render();
-      setTimeout(iaTurn, 800 + Math.random() * 600);
-    }
-  }, 600);
 }
 
 // === PHYSICS ===
@@ -716,7 +710,25 @@ function physicsLoop() {
   if (anyMoving) {
     requestAnimationFrame(physicsLoop);
   } else {
-    checkEnd();
+    // Ball stopped - handle turn
+    if (state.gameOver) return;
+
+    if (state.turn === 'red') {
+      // Red threw - switch to blue for IA
+      state.turn = 'blue';
+      updateHUD();
+      render();
+      setTimeout(iaTurn, 800 + Math.random() * 600);
+    } else {
+      // Blue threw - switch to red
+      state.turn = 'red';
+      updateHUD();
+      render();
+      // Check if end is over
+      if (state.redThrown >= state.mode && state.blueThrown >= state.mode) {
+        setTimeout(calculateEndScore, 500);
+      }
+    }
   }
 }
 
@@ -724,31 +736,41 @@ function physicsLoop() {
 function iaTurn() {
   if (state.gameOver) return;
 
-  // Find next blue ball
-  let blueBalls = state.balls.filter(b => b.color === 'blue');
-  let thrown = Math.floor(state.ballsThrown / 2) - (state.balls.filter(b => b.color === 'blue' && !b.moving).length - (state.balls.filter(b => b.color === 'blue').length - blueBalls.length));
-  // Simpler: count blue balls thrown
-  let blueThrown = state.balls.filter(b => b.color === 'blue' && !b.moving).length;
-  let ball = blueBalls[blueThrown];
+  // Find next blue ball to throw
+  let ball = null;
+  let count = 0;
+  for (let b of state.balls) {
+    if (b.color === 'blue') {
+      if (count === state.blueThrown) {
+        ball = b;
+        break;
+      }
+      count++;
+    }
+  }
 
   if (!ball) {
-    nextTurn();
+    // No more balls - check if end is over
+    checkEnd();
     return;
   }
 
-  // Simple IA: aim toward jack with some randomness based on level
+  // IA aims toward jack with some randomness based on level
   const difficulty = Math.min(state.level / 10, 0.9);
   const error = (1 - difficulty) * 80;
 
   const dx = state.jack.x - ball.x + (Math.random() - 0.5) * error;
   const dy = state.jack.y - ball.y + (Math.random() - 0.5) * error;
   const dist = Math.hypot(dx, dy);
-  const power = Math.min(dist / 20, 10) * difficulty +2;
+  const power = Math.min(dist / 20, 10) * difficulty + 2;
 
   const angle = Math.atan2(dy, dx);
   ball.vx = Math.cos(angle) * power;
   ball.vy = Math.sin(angle) * power;
   ball.moving = true;
+
+  state.ballsThrown++;
+  state.blueThrown++;
 
   requestAnimationFrame(physicsLoop);
 
@@ -774,18 +796,9 @@ function nextTurn() {
 }
 
 function checkEnd() {
-  // Count total balls thrown this end
-  const thrown = state.balls.filter(b => !b.moving).length;
-
-  if (thrown >= state.maxBalls * 2) {
-    // End is over - calculate score
+  // End is over when both teams have thrown all their balls
+  if (state.redThrown >= state.mode && state.blueThrown >= state.mode) {
     calculateEndScore();
-  } else {
-    // Continue - switch back if needed
-    if (state.turn === 'blue') {
-      state.turn = 'red';
-      updateHUD();
-    }
   }
 }
 
@@ -813,7 +826,7 @@ function calculateEndScore() {
         }
       }
     });
- state.redScore += redPoints;
+    state.redScore += redPoints;
   } else if (closestBlue) {
     // Blue scores
     bluePoints = 1;
